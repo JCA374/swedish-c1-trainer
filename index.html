@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Svensk ordträning – C1+</title>
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --card: #ffffff;
+    --ink: #23201b;
+    --muted: #6c675e;
+    --accent: #2f6f4f;
+    --accent-2: #1d5c8a;
+    --ok: #2f7d4f;
+    --bad: #b4402f;
+    --warn: #b8860b;
+    --line: #e2ddd2;
+    --shadow: 0 2px 14px rgba(0,0,0,.08);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    background: var(--accent);
+    color: #fff;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; letter-spacing: .3px; }
+  header .sub { font-size: 12px; opacity: .85; }
+  header nav button {
+    background: rgba(255,255,255,.14);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.3);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  header nav button:hover { background: rgba(255,255,255,.26); }
+  main { max-width: 720px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    box-shadow: var(--shadow);
+  }
+  .stat .n { font-size: 22px; font-weight: 700; color: var(--accent-2); }
+  .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: var(--shadow);
+  }
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--accent);
+    background: #eaf3ee;
+    border-radius: 999px;
+    padding: 3px 10px;
+    margin-bottom: 12px;
+  }
+  .prompt { font-size: 20px; margin: 6px 0 4px; }
+  .prompt .blank { color: var(--accent-2); font-weight: 700; letter-spacing: 1px; }
+  .prompt-word { font-size: 28px; font-weight: 700; color: var(--ink); }
+  .pos { font-size: 13px; color: var(--muted); font-style: italic; }
+  .defsv { font-size: 15px; color: var(--muted); margin: 10px 0; }
+
+  input[type=text] {
+    width: 100%;
+    font-size: 18px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin: 12px 0;
+    font-family: inherit;
+  }
+  input[type=text]:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+
+  .choices { display: grid; gap: 10px; margin: 14px 0; }
+  .choice {
+    text-align: left;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fbfaf6;
+    font-size: 16px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .choice:hover { border-color: var(--accent); }
+  .choice.correct { background: #e5f4ea; border-color: var(--ok); color: var(--ok); font-weight: 600; }
+  .choice.wrong { background: #f8e7e3; border-color: var(--bad); color: var(--bad); }
+  .choice:disabled { cursor: default; opacity: .9; }
+
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+  button.btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 11px 18px;
+    font-size: 15px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  button.btn:hover { filter: brightness(1.06); }
+  button.btn.secondary { background: #efeadf; color: var(--ink); border: 1px solid var(--line); }
+  button.btn.cheat { background: #fff6e0; color: var(--warn); border: 1px dashed var(--warn); }
+
+  .feedback { margin-top: 14px; padding: 12px 14px; border-radius: 10px; font-size: 15px; }
+  .feedback.ok { background: #e5f4ea; color: var(--ok); }
+  .feedback.bad { background: #f8e7e3; color: var(--bad); }
+  .reveal { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+  .reveal .label { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+  .syn { display: inline-block; background: #eef1f6; border-radius: 6px; padding: 2px 8px; margin: 2px 4px 2px 0; font-size: 14px; }
+  .english { margin-top: 10px; font-size: 15px; color: var(--accent-2); }
+  .english.hidden { display: none; }
+  .speak {
+    background: #eef1f6; border: 1px solid var(--line); border-radius: 8px;
+    padding: 4px 10px; font-size: 15px; cursor: pointer; margin-left: 8px;
+    vertical-align: middle; line-height: 1;
+  }
+  .speak:hover { background: #e2e7f0; }
+  .speak:disabled { opacity: .4; cursor: default; }
+  .example-extra { margin-top: 8px; color: var(--muted); font-size: 14px; }
+  .level-pill { font-size: 12px; color: var(--muted); margin-top: 12px; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .settings-group { margin-bottom: 22px; }
+  .settings-group h3 { margin: 0 0 8px; font-size: 15px; }
+  label.check { display: flex; align-items: center; gap: 8px; font-size: 15px; margin: 6px 0; cursor: pointer; }
+  textarea {
+    width: 100%; min-height: 120px; font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px; padding: 10px; border-radius: 10px; border: 1px solid var(--line);
+  }
+  .hint { font-size: 13px; color: var(--muted); margin: 6px 0; }
+  .msg { font-size: 14px; margin-top: 8px; }
+  .msg.ok { color: var(--ok); } .msg.bad { color: var(--bad); }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; }
+  @media (max-width: 520px) { .stats { grid-template-columns: repeat(2,1fr); } }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Svensk ordträning · C1+</h1>
+    <div class="sub">Avancerat ordförråd med upprepning</div>
+  </div>
+  <nav>
+    <button id="navStudy">Öva</button>
+    <button id="navSettings">Inställningar</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============ STUDY PANEL ============ -->
+  <section id="studyPanel" class="panel active">
+    <div class="stats">
+      <div class="stat"><div class="n" id="stSeen">0</div><div class="l">Sedda</div></div>
+      <div class="stat"><div class="n" id="stMastered">0</div><div class="l">Behärskade</div></div>
+      <div class="stat"><div class="n" id="stDue">0</div><div class="l">Att repetera</div></div>
+      <div class="stat"><div class="n" id="stStreak">0</div><div class="l">Rätt i rad</div></div>
+    </div>
+    <div id="cardHost"></div>
+  </section>
+
+  <!-- ============ SETTINGS PANEL ============ -->
+  <section id="settingsPanel" class="panel">
+    <div class="settings-group">
+      <h3>Övningstyper</h3>
+      <label class="check"><input type="checkbox" id="optFill" checked> Lucktext (skriv ordet i en mening)</label>
+      <label class="check"><input type="checkbox" id="optSyn" checked> Synonymmatchning (välj rätt synonym)</label>
+      <div class="hint">Minst en typ måste vara vald.</div>
+    </div>
+
+    <div class="settings-group">
+      <h3>Importera ord</h3>
+      <div class="hint">Klistra in en JSON-array av ord, eller välj en fil. Nya ord slås ihop (dubbletter med samma <code>id</code> uppdateras).</div>
+      <textarea id="importText" placeholder='[{"id":"exempel","word":"exempel","pos":"substantiv","definitionSv":"...","synonyms":["..."],"examples":["..."],"english":"...","difficulty":3}]'></textarea>
+      <div class="row">
+        <button class="btn" id="btnImportText">Importera från text</button>
+        <input type="file" id="importFile" accept=".json,application/json" style="display:none">
+        <button class="btn secondary" id="btnImportFile">Välj JSON-fil…</button>
+      </div>
+      <div class="msg" id="importMsg"></div>
+    </div>
+
+    <div class="settings-group">
+      <h3>Framsteg</h3>
+      <div class="row">
+        <button class="btn secondary" id="btnExport">Exportera framsteg</button>
+        <button class="btn secondary" id="btnExportWords">Exportera alla ord</button>
+        <button class="btn secondary" id="btnReset">Nollställ framsteg</button>
+      </div>
+      <div class="msg" id="progMsg"></div>
+    </div>
+
+    <div class="settings-group">
+      <h3>Om</h3>
+      <div class="hint">
+        Startuppsättningen innehåller <b id="wordCount">0</b> handplockade ord på C1-nivå eller högre.
+        Repetitionen bygger på ett Leitner-system: ord du missar (eller fuskar på) återkommer oftare,
+        ord du behärskar återkommer alltmer sällan. Allt sparas lokalt i din webbläsare.
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>Fungerar helt offline · inga data lämnar din enhet</footer>
+
+<script>
+"use strict";
+
+/* =========================================================================
+   SEED DATA — curated C1+ Swedish vocabulary.
+   Schema per entry:
+     id, word, pos, definitionSv, synonyms[], examples[], english, difficulty(1-5)
+   ========================================================================= */
+const SEED_WORDS = [
+  {id:"avveckla",word:"avveckla",pos:"verb",definitionSv:"gradvis lägga ner eller upplösa en verksamhet",synonyms:["avskaffa","upplösa","lägga ner"],examples:["Företaget beslöt att avveckla sin verksamhet i Norge.","Kärnkraften ska avvecklas under de kommande decennierna."],english:"to wind down / phase out",difficulty:3},
+  {id:"påtaglig",word:"påtaglig",pos:"adjektiv",definitionSv:"tydlig och konkret, som går att märka eller ta på",synonyms:["tydlig","märkbar","konkret"],examples:["Det fanns en påtaglig spänning i rummet.","Reformen fick en påtaglig effekt på ekonomin."],english:"tangible / noticeable",difficulty:3},
+  {id:"förbise",word:"förbise",pos:"verb",definitionSv:"inte lägga märke till eller ta hänsyn till något",synonyms:["förbigå","missa","bortse från"],examples:["Man får inte förbise de etiska aspekterna.","En viktig detalj hade förbisetts i rapporten."],english:"to overlook / disregard",difficulty:3},
+  {id:"utmynna",word:"utmynna",pos:"verb",definitionSv:"leda till eller sluta i ett visst resultat",synonyms:["resultera i","mynna ut i","leda till"],examples:["Diskussionen utmynnade i ett konkret förslag.","Protesterna utmynnade så småningom i en reform."],english:"to result in / culminate in",difficulty:4},
+  {id:"godtycklig",word:"godtycklig",pos:"adjektiv",definitionSv:"som sker efter eget tycke utan tydliga regler eller skäl",synonyms:["nyckfull","slumpmässig","egenmäktig"],examples:["Besluten uppfattades som godtyckliga och orättvisa.","Gränsen drogs på ett tämligen godtyckligt sätt."],english:"arbitrary",difficulty:4},
+  {id:"underblåsa",word:"underblåsa",pos:"verb",definitionSv:"förstärka eller elda på en känsla eller konflikt",synonyms:["spä på","elda på","förvärra"],examples:["Ryktena underblåste oron bland invånarna.","Retoriken riskerar att underblåsa hatet."],english:"to fuel / stoke",difficulty:4},
+  {id:"omständlig",word:"omständlig",pos:"adjektiv",definitionSv:"onödigt utförlig och krånglig, som tar lång tid",synonyms:["krånglig","invecklad","långrandig"],examples:["Ansökan var omständlig och tog en hel dag.","Han gav en omständlig förklaring till förseningen."],english:"long-winded / cumbersome",difficulty:3},
+  {id:"vederhaftig",word:"vederhäftig",pos:"adjektiv",definitionSv:"tillförlitlig och saklig, som går att lita på",synonyms:["tillförlitlig","trovärdig","saklig"],examples:["Vi behöver vederhäftiga källor för påståendet.","Kritiken var vederhäftig och väl underbyggd."],english:"credible / reliable",difficulty:4},
+  {id:"betingad",word:"betingad",pos:"adjektiv",definitionSv:"beroende av eller orsakad av vissa villkor",synonyms:["orsakad","villkorad","föranledd"],examples:["Priset är betingat av tillgång och efterfrågan.","Reaktionen var socialt betingad."],english:"conditioned / determined by",difficulty:4},
+  {id:"framhärda",word:"framhärda",pos:"verb",definitionSv:"envist hålla fast vid något trots motstånd",synonyms:["envisas","insistera","stå fast"],examples:["Hon framhärdade i sin åsikt trots kritiken.","Han framhärdade med att projektet skulle lyckas."],english:"to persist / persevere",difficulty:4},
+  {id:"anmärkningsvärd",word:"anmärkningsvärd",pos:"adjektiv",definitionSv:"som väcker uppmärksamhet eller är ovanlig",synonyms:["märklig","uppseendeväckande","påfallande"],examples:["Resultatet var anmärkningsvärt gott.","Det är anmärkningsvärt att ingen reagerade."],english:"remarkable / notable",difficulty:2},
+  {id:"tillskansa",word:"tillskansa sig",pos:"verb",definitionSv:"skaffa sig något orättmätigt eller med list",synonyms:["lägga beslag på","roffa åt sig","bemäktiga sig"],examples:["Han tillskansade sig makten genom bedrägeri.","De hade tillskansat sig stora förmögenheter."],english:"to appropriate / grab (illicitly)",difficulty:5},
+  {id:"vidlyftig",word:"vidlyftig",pos:"adjektiv",definitionSv:"alltför omfattande, utsvävande eller vidlyftig i omfång",synonyms:["utsvävande","omfattande","vidsträckt"],examples:["Planerna var alltför vidlyftiga för budgeten.","Han gav en vidlyftig skildring av resan."],english:"expansive / extravagant",difficulty:5},
+  {id:"hugad",word:"hugad",pos:"adjektiv",definitionSv:"villig eller intresserad av att göra något",synonyms:["villig","benägen","intresserad"],examples:["Är du hugad att följa med på vandringen?","Få var hugade att ta på sig uppdraget."],english:"inclined / willing",difficulty:5},
+  {id:"snegla",word:"snegla",pos:"verb",definitionSv:"titta i smyg eller från sidan på något",synonyms:["kika","glutta","kasta en blick"],examples:["Hon sneglade på klockan under mötet.","Han sneglade avundsjukt mot grannens bil."],english:"to glance (furtively)",difficulty:3},
+  {id:"betuttad",word:"betuttad",pos:"adjektiv",definitionSv:"lite kär eller förtjust i någon",synonyms:["förtjust","förälskad","kär"],examples:["Han var alldeles betuttad i sin nya kollega.","Hon verkade lätt betuttad i idén."],english:"smitten / fond",difficulty:5},
+  {id:"blidka",word:"blidka",pos:"verb",definitionSv:"lugna eller tillfredsställa någon som är arg",synonyms:["lugna","försona","blidgöra"],examples:["Han försökte blidka den arge kunden.","Inget kunde blidka hennes ilska."],english:"to appease / placate",difficulty:4},
+  {id:"beveka",word:"beveka",pos:"verb",definitionSv:"få någon att ändra sig genom vädjan",synonyms:["övertala","röra","mildra"],examples:["Inga argument kunde beveka domaren.","Hon lät sig till slut bevekas."],english:"to move / sway (by pleading)",difficulty:5},
+  {id:"undfallande",word:"undfallande",pos:"adjektiv",definitionSv:"alltför eftergiven och undvikande av konflikt",synonyms:["eftergiven","undvikande","foglig"],examples:["Ledningen var undfallande mot kritiken.","En undfallande hållning löser sällan problemet."],english:"submissive / evasive",difficulty:5},
+  {id:"tvetydig",word:"tvetydig",pos:"adjektiv",definitionSv:"som kan tolkas på fler än ett sätt",synonyms:["dubbeltydig","oklar","mångtydig"],examples:["Svaret var medvetet tvetydigt.","En tvetydig formulering ledde till missförstånd."],english:"ambiguous",difficulty:3},
+  {id:"omkullkasta",word:"omkullkasta",pos:"verb",definitionSv:"helt upphäva eller ogiltigförklara något",synonyms:["upphäva","kullkasta","riva upp"],examples:["Nya rön omkullkastade den gamla teorin.","Domen omkullkastades i högre instans."],english:"to overturn / overthrow",difficulty:4},
+  {id:"förhala",word:"förhala",pos:"verb",definitionSv:"medvetet dra ut på tiden för att fördröja något",synonyms:["fördröja","dra ut på","obstruera"],examples:["Motparten försökte förhala förhandlingarna.","Beslutet förhalades i flera månader."],english:"to delay / stall",difficulty:4},
+  {id:"påfrestande",word:"påfrestande",pos:"adjektiv",definitionSv:"som tär på krafter eller tålamod",synonyms:["ansträngande","krävande","tärande"],examples:["Resan var lång och påfrestande.","Det var en påfrestande period i livet."],english:"trying / demanding",difficulty:2},
+  {id:"knapphandig",word:"knapphändig",pos:"adjektiv",definitionSv:"knapp och bristfällig, med för lite information",synonyms:["bristfällig","sparsam","ofullständig"],examples:["Uppgifterna i rapporten var knapphändiga.","Han gav en knapphändig beskrivning av händelsen."],english:"scant / sparse",difficulty:4},
+  {id:"vederborlig",word:"vederbörlig",pos:"adjektiv",definitionSv:"som är korrekt, passande och i sin ordning",synonyms:["korrekt","tillbörlig","riktig"],examples:["Ärendet behandlades med vederbörlig noggrannhet.","Vederbörliga tillstånd måste inhämtas."],english:"due / proper",difficulty:4},
+  {id:"foga",word:"foga sig",pos:"verb",definitionSv:"anpassa sig och underordna sig något motvilligt",synonyms:["underordna sig","böja sig","rätta sig"],examples:["Till slut fogade han sig i beslutet.","Man måste foga sig efter reglerna."],english:"to comply / submit",difficulty:3},
+  {id:"anspraksfull",word:"anspråksfull",pos:"adjektiv",definitionSv:"som ställer höga krav eller gör anspråk på mycket",synonyms:["krävande","fordrande","pretentiös"],examples:["Projektet hade anspråksfulla mål.","Han hade en anspråksfull framtoning."],english:"pretentious / demanding",difficulty:4},
+  {id:"besinna",word:"besinna sig",pos:"verb",definitionSv:"tänka efter och ta sitt förnuft till fånga",synonyms:["tänka efter","betänka","sansa sig"],examples:["Han besinnade sig och tog tillbaka orden.","Låt oss besinna vad som står på spel."],english:"to reconsider / think twice",difficulty:4},
+  {id:"tillstymmelse",word:"tillstymmelse",pos:"substantiv",definitionSv:"en mycket liten antydan eller spår av något",synonyms:["antydan","spår","gnutta"],examples:["Det fanns inte en tillstymmelse till bevis.","Han visade inte en tillstymmelse av ånger."],english:"trace / hint",difficulty:5},
+  {id:"utstuderad",word:"utstuderad",pos:"adjektiv",definitionSv:"noga genomtänkt, ofta med baktanke",synonyms:["beräknande","genomtänkt","raffinerad"],examples:["Det var en utstuderad plan för att lura dem.","Hans elakhet verkade nästan utstuderad."],english:"calculated / deliberate",difficulty:4},
+  {id:"gackande",word:"gäckande",pos:"adjektiv",definitionSv:"retsamt undflyende och svår att fånga eller förstå",synonyms:["undflyende","svårfångad","retsam"],examples:["Hon gav ett gäckande leende.","Sanningen förblev gäckande."],english:"elusive / mocking",difficulty:5},
+  {id:"vederlagga",word:"vederlägga",pos:"verb",definitionSv:"bevisa att ett påstående är falskt",synonyms:["motbevisa","tillbakavisa","dementera"],examples:["Studien vederlade den tidigare hypotesen.","Påståendet gick lätt att vederlägga."],english:"to refute / disprove",difficulty:4},
+  {id:"tarvas",word:"tarvas",pos:"verb",definitionSv:"behövas eller vara nödvändigt",synonyms:["behövas","krävas","fordras"],examples:["Det tarvas mod för att säga ifrån.","Här tarvas en förklaring."],english:"to be required / needed",difficulty:5},
+  {id:"forlisa",word:"förlisa",pos:"verb",definitionSv:"om fartyg: sjunka eller gå under; bildligt misslyckas helt",synonyms:["sjunka","haverera","gå under"],examples:["Fartyget förliste i stormen.","Alla planer förliste till slut."],english:"to sink / founder",difficulty:4},
+  {id:"betvinga",word:"betvinga",pos:"verb",definitionSv:"kuva eller behärska något med kraft",synonyms:["kuva","besegra","behärska"],examples:["Han försökte betvinga sin rädsla.","Upproret betvingades snabbt."],english:"to subdue / conquer",difficulty:5},
+  {id:"omsesidig",word:"ömsesidig",pos:"adjektiv",definitionSv:"som gäller åt båda hållen mellan parter",synonyms:["inbördes","dubbelsidig","gemensam"],examples:["Respekten var ömsesidig mellan dem.","Avtalet bygger på ömsesidigt förtroende."],english:"mutual / reciprocal",difficulty:3},
+  {id:"benagen",word:"benägen",pos:"adjektiv",definitionSv:"som har en tendens eller vilja till något",synonyms:["hågad","böjd","disponerad"],examples:["Jag är benägen att hålla med dig.","Han är benägen att överdriva."],english:"inclined / prone",difficulty:3},
+  {id:"ovaldig",word:"oväldig",pos:"adjektiv",definitionSv:"opartisk och rättvis, utan att gynna någon sida",synonyms:["opartisk","objektiv","neutral"],examples:["Domstolen ska vara oväldig.","En oväldig granskning krävs."],english:"impartial / unbiased",difficulty:5},
+  {id:"harleda",word:"härleda",pos:"verb",definitionSv:"visa varifrån något kommer eller logiskt följer",synonyms:["härröra","spåra","deducera"],examples:["Man kan härleda ordet till latinet.","Slutsatsen kan härledas ur premisserna."],english:"to derive / trace",difficulty:4},
+  {id:"vidkannas",word:"vidkännas",pos:"verb",definitionSv:"tvingas erkänna eller ta på sig något negativt",synonyms:["erkänna","kännas vid","utstå"],examples:["Han fick vidkännas en kännbar förlust.","Bolaget måste vidkännas stora nedskärningar."],english:"to acknowledge / suffer",difficulty:5},
+  {id:"framstalla",word:"framställa",pos:"verb",definitionSv:"beskriva, presentera eller tillverka något",synonyms:["skildra","presentera","tillverka"],examples:["Han framställde saken som enkel.","Vaccinet framställs i stora mängder."],english:"to present / produce",difficulty:3},
+  {id:"pafallande",word:"påfallande",pos:"adjektiv",definitionSv:"som är iögonfallande och lätt att lägga märke till",synonyms:["iögonfallande","markant","tydlig"],examples:["Det var en påfallande likhet mellan dem.","Hon var påfallande tyst under mötet."],english:"striking / conspicuous",difficulty:3},
+  {id:"forevisa",word:"förevisa",pos:"verb",definitionSv:"visa upp något för andra",synonyms:["visa upp","demonstrera","uppvisa"],examples:["Guiden förevisade slottets salar.","Han förevisade den nya maskinen."],english:"to display / demonstrate",difficulty:4},
+  {id:"eftertrycklig",word:"eftertrycklig",pos:"adjektiv",definitionSv:"kraftig och bestämd, med tydligt eftertryck",synonyms:["bestämd","kraftfull","emfatisk"],examples:["Hon gav ett eftertryckligt nej.","Han betonade eftertryckligt vikten av detta."],english:"emphatic / forceful",difficulty:4},
+  {id:"besjalad",word:"besjälad",pos:"adjektiv",definitionSv:"fylld av liv, känsla eller en stark drivkraft",synonyms:["genomsyrad","uppfylld","inspirerad"],examples:["Hon var besjälad av en stark rättskänsla.","Texten är besjälad av hopp."],english:"imbued / animated (by)",difficulty:5},
+  {id:"tillrattavisa",word:"tillrättavisa",pos:"verb",definitionSv:"påpeka ett fel och tillrättaföra någon",synonyms:["läxa upp","banna","korrigera"],examples:["Chefen tillrättavisade honom inför alla.","Barnet tillrättavisades vänligt."],english:"to reprimand / correct",difficulty:4},
+  {id:"skronilagd",word:"skröplig",pos:"adjektiv",definitionSv:"svag och bräcklig, ofta på grund av ålder",synonyms:["bräcklig","klen","svag"],examples:["Den gamle mannen var skröplig men klartänkt.","Bron var i skröpligt skick."],english:"frail / feeble",difficulty:4},
+  {id:"hugfasta",word:"hugfästa",pos:"verb",definitionSv:"bevara minnet av något; högtidlighålla",synonyms:["hedra","minnas","föreviga"],examples:["En staty restes för att hugfästa hans minne.","Dagen hugfästs varje år."],english:"to commemorate",difficulty:5},
+  {id:"velbetankt",word:"välbetänkt",pos:"adjektiv",definitionSv:"klokt och noga genomtänkt",synonyms:["klok","genomtänkt","förnuftig"],examples:["Det var ett välbetänkt beslut.","Ett välbetänkt råd i rätt tid."],english:"well-considered / prudent",difficulty:4},
+  {id:"foresvava",word:"föresväva",pos:"verb",definitionSv:"vagt finnas i tankarna som en idé eller bild",synonyms:["föreställa sig","ana","tänka sig"],examples:["Det föresvävade mig att något var fel.","En annan lösning föresvävade henne."],english:"to have a vague notion",difficulty:5},
+  {id:"omtvistad",word:"omtvistad",pos:"adjektiv",definitionSv:"som det råder oenighet eller strid om",synonyms:["kontroversiell","omdebatterad","stridig"],examples:["Frågan är fortfarande omtvistad.","Ett omtvistat landområde."],english:"disputed / contested",difficulty:3},
+  {id:"betaga",word:"betaga",pos:"verb",definitionSv:"helt fängsla eller fascinera någon; även beröva",synonyms:["fängsla","hänföra","beröva"],examples:["Utsikten betog alla besökare.","Han betogs av hennes berättelse."],english:"to captivate / enthrall",difficulty:5},
+  {id:"anfaktad",word:"anfäktad",pos:"adjektiv",definitionSv:"plågad av tvivel, oro eller frestelser",synonyms:["plågad","orolig","ansatt"],examples:["Hon var anfäktad av dåligt samvete.","Han kände sig anfäktad av tvivel."],english:"troubled / assailed (by doubt)",difficulty:5},
+  {id:"hemfalla",word:"hemfalla",pos:"verb",definitionSv:"ge efter för och fastna i något negativt",synonyms:["förfalla","ge efter","tillgripa"],examples:["Han hemföll åt cynism.","Debatten hemföll snart åt personangrepp."],english:"to lapse into / succumb to",difficulty:5},
+  {id:"pakalla",word:"påkalla",pos:"verb",definitionSv:"kräva eller göra anspråk på uppmärksamhet",synonyms:["kräva","fordra","begära"],examples:["Situationen påkallar omedelbar handling.","Han påkallade ordförandens uppmärksamhet."],english:"to call for / require",difficulty:4},
+  {id:"beskaffenhet",word:"beskaffenhet",pos:"substantiv",definitionSv:"det sätt något är beskaffat på; dess natur",synonyms:["natur","art","karaktär"],examples:["Skadans beskaffenhet var svår att bedöma.","Marken var av lerig beskaffenhet."],english:"nature / condition",difficulty:4},
+  {id:"fogas",word:"fogas",pos:"verb",definitionSv:"läggas till eller sättas samman med något",synonyms:["tillfogas","läggas till","sammanfogas"],examples:["En bilaga fogades till avtalet.","Delarna fogas samman med lim."],english:"to be added / joined",difficulty:4},
+  {id:"invand",word:"invänd",pos:"adjektiv",definitionSv:"riktad inåt; om personlighet: sluten och reflekterande",synonyms:["inåtvänd","reserverad","sluten"],examples:["Han var en invänd och tänkande person.","En invänd blick."],english:"introverted / inward",difficulty:4},
+  {id:"betryggande",word:"betryggande",pos:"adjektiv",definitionSv:"som ger trygghet och tillräcklig säkerhet",synonyms:["tryggande","tillfredsställande","säker"],examples:["Marginalen var betryggande stor.","Säkerheten var på en betryggande nivå."],english:"reassuring / satisfactory",difficulty:3},
+  {id:"framharda",word:"förfäkta",pos:"verb",definitionSv:"ivrigt hävda och försvara en åsikt",synonyms:["hävda","försvara","driva"],examples:["Hon förfäktade sin tes med kraft.","Han förfäktade rätten till fri åsiktsbildning."],english:"to advocate / assert",difficulty:4},
+  {id:"tillbudsstaende",word:"till buds",pos:"uttryck",definitionSv:"som finns tillgängligt att använda",synonyms:["tillgänglig","till hands","disponibel"],examples:["Vi använde alla medel som stod till buds.","De resurser som står till buds är begränsade."],english:"available / at one's disposal",difficulty:4},
+  {id:"formaga",word:"förmätenhet",pos:"substantiv",definitionSv:"övermod och brist på ödmjukhet",synonyms:["övermod","arrogans","hybris"],examples:["Det vore förmätet att tro sig veta allt.","Hans förmätenhet stötte många."],english:"presumption / arrogance",difficulty:5},
+  {id:"skenbar",word:"skenbar",pos:"adjektiv",definitionSv:"som verkar vara på ett sätt men inte är det",synonyms:["synbar","illusorisk","låtsad"],examples:["Lugnet var bara skenbart.","Det fanns en skenbar motsättning."],english:"apparent / illusory",difficulty:3},
+  {id:"vidmakthalla",word:"vidmakthålla",pos:"verb",definitionSv:"upprätthålla och bevara ett tillstånd",synonyms:["upprätthålla","bevara","bibehålla"],examples:["Det gäller att vidmakthålla kunskapen.","Systemet är dyrt att vidmakthålla."],english:"to maintain / sustain",difficulty:4},
+  {id:"tveksam",word:"grannlaga",pos:"adjektiv",definitionSv:"som kräver stor finkänslighet och försiktighet",synonyms:["känslig","delikat","finkänslig"],examples:["Det var en grannlaga uppgift att medla.","Frågan är grannlaga och måste hanteras varsamt."],english:"delicate / sensitive",difficulty:5},
+  {id:"avog",word:"avog",pos:"adjektiv",definitionSv:"fientligt inställd eller ovillig",synonyms:["fientlig","ovillig","negativ"],examples:["Han ställde sig avog till förslaget.","Stämningen var avog och kylig."],english:"hostile / averse",difficulty:5},
+  {id:"beslojad",word:"beslöjad",pos:"adjektiv",definitionSv:"höljd i slöja; oklar eller dold",synonyms:["dold","fördunklad","oklar"],examples:["Sanningen förblev beslöjad.","Ett beslöjat hot låg i orden."],english:"veiled / obscured",difficulty:5},
+  {id:"framkasta",word:"framkasta",pos:"verb",definitionSv:"föra fram en tanke eller ett förslag tentativt",synonyms:["föreslå","antyda","väcka"],examples:["Hon framkastade en försiktig hypotes.","Ett förslag framkastades under mötet."],english:"to put forward / suggest",difficulty:4},
+  {id:"tillstadeskomst",word:"tillkomst",pos:"substantiv",definitionSv:"det att något uppstår eller skapas",synonyms:["uppkomst","skapelse","ursprung"],examples:["Lagens tillkomst dröjde i åratal.","Vid bolagets tillkomst var visionen tydlig."],english:"origin / creation",difficulty:3},
+  {id:"underforstadd",word:"underförstådd",pos:"adjektiv",definitionSv:"som är antydd men inte uttalad direkt",synonyms:["outtalad","implicit","antydd"],examples:["Det fanns en underförstådd överenskommelse.","Kritiken var underförstådd men tydlig."],english:"implicit / implied",difficulty:3},
+  {id:"nagot",word:"nödtorftig",pos:"adjektiv",definitionSv:"knapp men precis tillräcklig; provisorisk",synonyms:["knapp","provisorisk","torftig"],examples:["De fick en nödtorftig måltid.","Skadan lagades nödtorftigt."],english:"meager / makeshift",difficulty:5},
+  {id:"hugskott",word:"hugskott",pos:"substantiv",definitionSv:"en plötslig och ofta ogenomtänkt idé",synonyms:["infall","nyck","impuls"],examples:["Resan var ett rent hugskott.","Han handlade på ett hugskott."],english:"sudden impulse / whim",difficulty:5},
+  {id:"beledsaga",word:"beledsaga",pos:"verb",definitionSv:"följa med eller åtfölja någon eller något",synonyms:["åtfölja","ledsaga","följa"],examples:["Texten beledsagades av bilder.","Ministern beledsagades av sin stab."],english:"to accompany",difficulty:5},
+  {id:"utrona",word:"utröna",pos:"verb",definitionSv:"ta reda på eller fastställa något genom undersökning",synonyms:["fastställa","utreda","undersöka"],examples:["Man vill utröna orsaken till felet.","Det gäller att utröna sanningen."],english:"to ascertain / find out",difficulty:4},
+  {id:"vederkvicka",word:"vederkvicka",pos:"verb",definitionSv:"ge ny kraft och friskhet; pigga upp",synonyms:["uppfriska","pigga upp","stärka"],examples:["En kall dryck vederkvickte vandrarna.","Sömnen vederkvickte honom."],english:"to refresh / revive",difficulty:5},
+  {id:"formena",word:"förmena",pos:"verb",definitionSv:"neka eller vägra någon något",synonyms:["neka","vägra","förvägra"],examples:["Ingen kan förmena dig den rätten.","De förmenades tillträde till mötet."],english:"to deny / withhold",difficulty:5},
+  {id:"tilltagande",word:"tilltagande",pos:"adjektiv",definitionSv:"som blir allt större eller starkare",synonyms:["ökande","stigande","växande"],examples:["Det rådde en tilltagande oro.","Med tilltagande ålder blev han mildare."],english:"increasing / growing",difficulty:3},
+  {id:"besinningslos",word:"besinningslös",pos:"adjektiv",definitionSv:"utan självbehärskning; vild och okontrollerad",synonyms:["hejdlös","vild","okontrollerad"],examples:["Han slog till i besinningslös ilska.","En besinningslös jakt på vinst."],english:"reckless / frenzied",difficulty:4},
+  {id:"avhalla",word:"avhålla sig",pos:"verb",definitionSv:"låta bli eller avstå från något",synonyms:["avstå","låta bli","hålla sig från"],examples:["Han avhöll sig från att kommentera.","Man bör avhålla sig från förhastade slutsatser."],english:"to abstain / refrain",difficulty:4},
+  {id:"vederborande",word:"vederbörande",pos:"substantiv",definitionSv:"den berörda personen; den det gäller",synonyms:["den berörda","personen i fråga","ansvarig"],examples:["Vederbörande ska underrättas skriftligt.","Frågan hänvisas till vederbörande."],english:"the person concerned",difficulty:4},
+  {id:"omgardad",word:"omgärdad",pos:"adjektiv",definitionSv:"omgiven eller omringad av något",synonyms:["omgiven","inhägnad","kringgärdad"],examples:["Projektet var omgärdat av sekretess.","Huset var omgärdat av en hög mur."],english:"surrounded / hedged in",difficulty:4},
+  {id:"forspilla",word:"förspilla",pos:"verb",definitionSv:"slösa bort eller förlora något värdefullt i onödan",synonyms:["slösa","förslösa","kasta bort"],examples:["Vi får inte förspilla den här chansen.","Han förspillde sin talang."],english:"to waste / squander",difficulty:4},
+  {id:"beskard",word:"beskärd",pos:"adjektiv",definitionSv:"tilldelad eller given någon som lott",synonyms:["tilldelad","given","förunnad"],examples:["Framgången var honom inte beskärd.","Var och en fick sin beskärda del."],english:"allotted / granted",difficulty:5},
+  {id:"forhavelse",word:"förhävelse",pos:"substantiv",definitionSv:"övermodigt skryt och självförhävelse",synonyms:["skryt","högmod","övermod"],examples:["Hans tal var full av förhävelse.","Utan förhävelse kan jag säga att vi lyckades."],english:"boastfulness / hubris",difficulty:5},
+  {id:"tillgjord",word:"tillgjord",pos:"adjektiv",definitionSv:"onaturlig och konstlad i sitt sätt",synonyms:["konstlad","tillkämpad","affekterad"],examples:["Hennes leende verkade tillgjort.","Han talade med tillgjord artighet."],english:"affected / artificial",difficulty:4},
+  {id:"utmatt",word:"utmätt",pos:"adjektiv",definitionSv:"noga avvägd och begränsad i mängd",synonyms:["avvägd","begränsad","tilltagen"],examples:["Tiden var knappt utmätt.","Portionerna var snålt utmätta."],english:"measured out / allotted",difficulty:4},
+  {id:"hanryckt",word:"hänryckt",pos:"adjektiv",definitionSv:"överväldigad av glädje eller beundran",synonyms:["hänförd","förtjust","extatisk"],examples:["Publiken var hänryckt av föreställningen.","Hon lyssnade hänryckt på musiken."],english:"enraptured / entranced",difficulty:4},
+  {id:"betsla",word:"betinga sig",pos:"verb",definitionSv:"kräva eller uppnå ett visst pris eller villkor",synonyms:["kräva","uppnå","fordra"],examples:["Tavlan betingade ett högt pris på auktionen.","Tjänsten betingar sig hög lön."],english:"to fetch / command (a price)",difficulty:5},
+  {id:"forbehallsam",word:"förbehållsam",pos:"adjektiv",definitionSv:"återhållsam och försiktig med att uttala sig",synonyms:["reserverad","återhållsam","försiktig"],examples:["Han var förbehållsam i sitt omdöme.","Ledningen var förbehållsam med löften."],english:"reserved / cautious",difficulty:4},
+  {id:"anamma",word:"anamma",pos:"verb",definitionSv:"ta till sig och göra till sitt",synonyms:["ta till sig","omfamna","tillägna sig"],examples:["Företaget anammade den nya tekniken.","Hon anammade snabbt idén."],english:"to adopt / embrace",difficulty:3},
+  {id:"villrad",word:"villrådig",pos:"adjektiv",definitionSv:"osäker på vad man ska göra; rådvill",synonyms:["rådvill","osäker","tveksam"],examples:["Han stod villrådig inför valet.","De var villrådiga om hur de skulle gå vidare."],english:"irresolute / at a loss",difficulty:4},
+  {id:"betsel",word:"tygla",pos:"verb",definitionSv:"hålla tillbaka och behärska något",synonyms:["behärska","hejda","kontrollera"],examples:["Han försökte tygla sin ilska.","Inflationen måste tyglas."],english:"to curb / rein in",difficulty:4},
+  {id:"vanskligt",word:"vansklig",pos:"adjektiv",definitionSv:"osäker och svår, förenad med risk",synonyms:["riskabel","osäker","grannlaga"],examples:["Det är vanskligt att sia om framtiden.","En vansklig balansgång."],english:"precarious / tricky",difficulty:4},
+  {id:"omkomma",word:"undkomma",pos:"verb",definitionSv:"lyckas fly eller slippa undan något",synonyms:["fly","slippa undan","undgå"],examples:["Ingen undkom kritiken.","De undkom med blotta förskräckelsen."],english:"to escape / evade",difficulty:3},
+  {id:"formilda",word:"förmildra",pos:"verb",definitionSv:"göra mindre allvarligt eller mildare",synonyms:["mildra","lindra","dämpa"],examples:["Inget kan förmildra det inträffade.","Det fanns förmildrande omständigheter."],english:"to mitigate / soften",difficulty:4},
+  {id:"outgrundlig",word:"outgrundlig",pos:"adjektiv",definitionSv:"omöjlig att förstå eller genomskåda",synonyms:["gåtfull","obegriplig","ofattbar"],examples:["Hans motiv förblev outgrundliga.","Ett outgrundligt leende."],english:"inscrutable / unfathomable",difficulty:4},
+  {id:"tillspetsad",word:"tillspetsad",pos:"adjektiv",definitionSv:"skärpt och tillstånd av kris eller överdrift",synonyms:["skärpt","kritisk","dramatiserad"],examples:["Läget blev alltmer tillspetsat.","Han gav en tillspetsad formulering."],english:"aggravated / pointed",difficulty:4},
+  {id:"hejda",word:"besvärja",pos:"verb",definitionSv:"enträget vädja till någon; frammana",synonyms:["bönfalla","enträget be","frammana"],examples:["Hon besvor honom att stanna.","Talaren besvor publiken att agera."],english:"to implore / conjure",difficulty:5},
+  {id:"framatanda",word:"framåtanda",pos:"substantiv",definitionSv:"driftig vilja att komma framåt och utvecklas",synonyms:["driftighet","initiativkraft","företagsamhet"],examples:["Teamet präglades av framåtanda.","Hennes framåtanda smittade av sig."],english:"drive / initiative",difficulty:3},
+  {id:"omdanande",word:"omdanande",pos:"adjektiv",definitionSv:"som förändrar i grunden; genomgripande",synonyms:["omvälvande","genomgripande","revolutionerande"],examples:["Reformen var omdanande för samhället.","En omdanande upplevelse."],english:"transformative",difficulty:4},
+  {id:"anstiftad",word:"anstifta",pos:"verb",definitionSv:"sätta igång eller orsaka något negativt",synonyms:["initiera","orsaka","framkalla"],examples:["Han anstiftade upproret.","Vem anstiftade bråket?"],english:"to instigate",difficulty:4},
+  {id:"betryck",word:"betryck",pos:"substantiv",definitionSv:"tillstånd av nöd, oro eller nedstämdhet",synonyms:["nöd","betryckthet","bekymmer"],examples:["Familjen levde i ekonomiskt betryck.","Ett djupt själsligt betryck."],english:"distress / hardship",difficulty:5},
+  {id:"vederhaftigt",word:"skärskåda",pos:"verb",definitionSv:"granska noggrant och kritiskt",synonyms:["granska","syna","undersöka"],examples:["Vi måste skärskåda argumenten.","Förslaget skärskådades i detalj."],english:"to scrutinize",difficulty:4},
+  {id:"frejdig",word:"frejdig",pos:"adjektiv",definitionSv:"glad, rask och frimodig",synonyms:["glättig","rask","munter"],examples:["Han hälsade med frejdig ton.","En frejdig och orädd person."],english:"cheerful / bold",difficulty:5},
+  {id:"forlanad",word:"förlänad",pos:"adjektiv",definitionSv:"tilldelad eller given som en förmån",synonyms:["tilldelad","given","skänkt"],examples:["Han blev förlänad en hög orden.","Titeln förlänades henne av kungen."],english:"conferred / bestowed",difficulty:5},
+  {id:"handfallen",word:"handfallen",pos:"adjektiv",definitionSv:"handlingsförlamad av förvåning eller osäkerhet",synonyms:["rådlös","paralyserad","villrådig"],examples:["Hon stod handfallen inför beskedet.","Ledningen verkade handfallen."],english:"at a loss / helpless",difficulty:4},
+  {id:"tillskott",word:"tillskott",pos:"substantiv",definitionSv:"något som läggs till och ökar en mängd",synonyms:["tillägg","bidrag","påfyllning"],examples:["Ett välkommet tillskott till kassan.","Familjen fick ett tillskott."],english:"addition / contribution",difficulty:2},
+  {id:"forgaten",word:"förgäten",pos:"adjektiv",definitionSv:"bortglömd och lämnad utan uppmärksamhet",synonyms:["bortglömd","försummad","glömd"],examples:["En förgäten hjälte från kriget.","Byn låg förgäten och öde."],english:"forgotten / neglected",difficulty:5},
+  {id:"omnojd",word:"missnöjd",pos:"adjektiv",definitionSv:"inte nöjd; missbelåten med något",synonyms:["missbelåten","otillfredsställd","besviken"],examples:["Kunderna var missnöjda med servicen.","Han muttrade missnöjt."],english:"dissatisfied",difficulty:2},
+  {id:"besutten",word:"besutten",pos:"adjektiv",definitionSv:"välbärgad och egendomsägande",synonyms:["förmögen","bemedlad","välbärgad"],examples:["De besuttna klasserna motsatte sig reformen.","En besutten bonde."],english:"propertied / well-off",difficulty:5},
+  {id:"foretradesvis",word:"företrädesvis",pos:"adverb",definitionSv:"i första hand; huvudsakligen",synonyms:["huvudsakligen","framför allt","mestadels"],examples:["Publiken bestod företrädesvis av studenter.","Vi använder företrädesvis lokala råvaror."],english:"primarily / preferably",difficulty:3},
+  {id:"forjaga",word:"förjaga",pos:"verb",definitionSv:"driva bort eller skingra något",synonyms:["skingra","driva bort","fördriva"],examples:["Solen förjagade morgondimman.","Han försökte förjaga sina onda aningar."],english:"to dispel / drive away",difficulty:4},
+  {id:"betsen",word:"stävja",pos:"verb",definitionSv:"hejda och motverka något oönskat",synonyms:["hejda","motverka","dämpa"],examples:["Åtgärderna ska stävja brottsligheten.","Man vill stävja spridningen av ryktet."],english:"to curb / check",difficulty:4},
+  {id:"illvillig",word:"illvillig",pos:"adjektiv",definitionSv:"som vill någon ont; ondsint",synonyms:["ondsint","elak","fientlig"],examples:["Det var ett illvilligt rykte.","Hon kastade en illvillig blick."],english:"malicious / spiteful",difficulty:4},
+  {id:"omtanke",word:"omdöme",pos:"substantiv",definitionSv:"förmåga att bedöma och fatta kloka beslut",synonyms:["bedömning","urskillning","gott förstånd"],examples:["Han visade gott omdöme i krisen.","Det krävs omdöme för att avgöra saken."],english:"judgment / discernment",difficulty:3},
+  {id:"tvehagsen",word:"tvehågsen",pos:"adjektiv",definitionSv:"obeslutsam och tveksam mellan alternativ",synonyms:["obeslutsam","tveksam","vankelmodig"],examples:["Han var tvehågsen inför flytten.","En tvehågsen inställning hjälper inte."],english:"hesitant / undecided",difficulty:5},
+  {id:"forkovra",word:"förkovra sig",pos:"verb",definitionSv:"utveckla sina kunskaper och färdigheter",synonyms:["utbilda sig","lära sig mer","fördjupa sig"],examples:["Hon förkovrade sig i språket.","Man bör ständigt förkovra sig."],english:"to improve / better oneself",difficulty:4},
+  {id:"vasentlig",word:"väsentlig",pos:"adjektiv",definitionSv:"som är viktig och har stor betydelse",synonyms:["viktig","betydande","central"],examples:["Det är en väsentlig skillnad.","Priset steg väsentligt."],english:"essential / significant",difficulty:2},
+  {id:"hopplos",word:"grasserar",pos:"verb",definitionSv:"härja och sprida sig okontrollerat",synonyms:["härja","florera","breda ut sig"],examples:["Ryktena grasserade i staden.","En influensa grasserade på skolan."],english:"to rage / be rampant",difficulty:5},
+  {id:"betanksam",word:"betänksam",pos:"adjektiv",definitionSv:"eftertänksam och försiktig i sitt omdöme",synonyms:["eftertänksam","begrundande","försiktig"],examples:["Han nickade betänksamt.","En betänksam min spred sig."],english:"pensive / thoughtful",difficulty:4},
+  {id:"framjande",word:"främjande",pos:"adjektiv",definitionSv:"som gynnar eller understödjer något",synonyms:["gynnande","understödjande","befrämjande"],examples:["Åtgärder som är främjande för hälsan.","Ett tillväxtfrämjande beslut."],english:"promoting / conducive",difficulty:3},
+  {id:"otillborlig",word:"otillbörlig",pos:"adjektiv",definitionSv:"opassande och inte tillåten; olämplig",synonyms:["opassande","olämplig","otillåten"],examples:["Han anklagades för otillbörlig påverkan.","Det vore otillbörligt att lägga sig i."],english:"improper / undue",difficulty:4},
+  {id:"utmarglad",word:"utmärglad",pos:"adjektiv",definitionSv:"kraftigt avmagrad och utsvulten",synonyms:["avmagrad","utsvulten","tärd"],examples:["De frigivna fångarna var utmärglade.","Ett utmärglat ansikte."],english:"emaciated / gaunt",difficulty:5},
+  {id:"foresatta",word:"föresätta sig",pos:"verb",definitionSv:"bestämt besluta sig för att göra något",synonyms:["besluta sig","bestämma sig","ha för avsikt"],examples:["Hon föresatte sig att lyckas.","Vi har föresatt oss att bli bäst."],english:"to resolve / set out to",difficulty:4}
+];
+
+/* =========================================================================
+   STATE / STORAGE
+   ========================================================================= */
+const STORAGE_KEY = "svc1.state.v1";
+const WORDS_KEY   = "svc1.words.v1";
+const LEITNER_INTERVALS = [0, 1, 2, 4, 8, 16, 32]; // ticks until due per level
+
+let words = [];       // active word list (seed merged with imports)
+let state = null;     // { tick, seen, srs:{id:{...}}, settings:{fill,syn} }
+let current = null;   // { word, mode } for the card on screen
+
+function nowSrs(id){ return state.srs[id]; }
+
+function defaultState(){
+  return { tick: 0, srs: {}, settings: { fill: true, syn: true } };
+}
+
+function loadWords(){
+  try {
+    const raw = localStorage.getItem(WORDS_KEY);
+    if (raw){
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr) && arr.length) return arr;
+    }
+  } catch(e){ /* fall through to seed */ }
+  return SEED_WORDS.slice();
+}
+// Writes can throw (private browsing, storage blocked/full); never let that break the app.
+function storeSet(key, value){
+  try { localStorage.setItem(key, JSON.stringify(value)); }
+  catch(e){ console.warn("Kunde inte spara framsteg:", e); }
+}
+function saveWords(){ storeSet(WORDS_KEY, words); }
+
+function loadState(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw){
+      const s = JSON.parse(raw);
+      if (s && typeof s === "object"){
+        s.settings = Object.assign({ fill:true, syn:true }, s.settings || {});
+        s.srs = s.srs || {};
+        s.tick = s.tick || 0;
+        return s;
+      }
+    }
+  } catch(e){ /* fall through */ }
+  return defaultState();
+}
+function saveState(){ storeSet(STORAGE_KEY, state); }
+
+/* Ensure every word has an SRS record. New/unseen words are seeded gradually:
+   they start "due" but are ranked below overdue seen words by the picker. */
+function ensureSrs(){
+  for (const w of words){
+    if (!state.srs[w.id]){
+      state.srs[w.id] = {
+        level: 0, ease: 1, seen: 0, correct: 0, incorrect: 0,
+        streak: 0, dueAt: 0, cheated: false
+      };
+    }
+  }
+}
+
+/* =========================================================================
+   SPACED REPETITION — pure-ish helpers
+   ========================================================================= */
+function normalizeAnswer(str){
+  return (str || "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[.,;:!?"'()]/g, "");
+}
+
+// Schedule a word after an attempt. result: "correct" | "wrong". cheated flag
+// prevents promotion and pulls the item forward.
+function schedule(id, result, cheated){
+  const s = state.srs[id];
+  s.seen += 1;
+  if (result === "correct" && !cheated){
+    s.correct += 1;
+    s.streak += 1;
+    s.level = Math.min(LEITNER_INTERVALS.length - 1, s.level + 1);
+    s.ease = Math.min(2.5, s.ease + 0.1);
+  } else {
+    s.incorrect += 1;
+    s.streak = 0;
+    // wrong OR cheated: demote toward 0
+    s.level = cheated ? Math.max(0, s.level - 1) : Math.max(0, Math.floor(s.level / 2));
+    s.ease = Math.max(0.6, s.ease - 0.2);
+  }
+  s.cheated = false; // reset per-attempt flag
+  const base = LEITNER_INTERVALS[s.level];
+  const interval = Math.max(1, Math.round(base * s.ease));
+  s.dueAt = state.tick + interval;
+}
+
+// Weight for the picker: higher = more likely / more urgent to show next.
+function pickWeight(w){
+  const s = state.srs[w.id];
+  const overdue = state.tick - s.dueAt;            // >0 means due/overdue
+  const errorRate = s.seen ? s.incorrect / s.seen : 0;
+  const difficulty = (w.difficulty || 3);          // 1..5 baseline
+  const unseenPenalty = s.seen === 0 ? -0.5 : 0;   // hold new words slightly back
+  // Only consider items that are due (overdue >= 0), else weight ~0.
+  if (overdue < 0) return 0.0001;
+  return (1 + overdue) * (1 + errorRate * 3) * (0.6 + difficulty * 0.25) + unseenPenalty + 0.5;
+}
+
+function pickNextWord(){
+  if (!words.length) return null;
+  // Candidates that are due.
+  let due = words.filter(w => state.srs[w.id].dueAt <= state.tick);
+  // If nothing due yet (early on), advance tick so scheduling stays live.
+  if (!due.length){
+    // jump the clock to the soonest due item
+    const soonest = Math.min(...words.map(w => state.srs[w.id].dueAt));
+    state.tick = soonest;
+    due = words.filter(w => state.srs[w.id].dueAt <= state.tick);
+  }
+  const weighted = due.map(w => ({ w, weight: pickWeight(w) }));
+  const total = weighted.reduce((a, b) => a + b.weight, 0);
+  let r = Math.random() * total;
+  for (const item of weighted){
+    r -= item.weight;
+    if (r <= 0) return item.w;
+  }
+  return weighted[weighted.length - 1].w;
+}
+
+/* Decide exercise mode for a word, respecting settings & data availability. */
+function chooseMode(word){
+  const canFill = state.settings.fill && word.examples && word.examples.length;
+  const canSyn  = state.settings.syn && word.synonyms && word.synonyms.length;
+  if (canFill && canSyn) return Math.random() < 0.5 ? "fill" : "syn";
+  if (canFill) return "fill";
+  if (canSyn) return "syn";
+  // Fallback: if the chosen setting has no data, use whatever exists.
+  if (word.examples && word.examples.length) return "fill";
+  if (word.synonyms && word.synonyms.length) return "syn";
+  return "fill";
+}
+
+function buildSynonymChoices(word){
+  // The definition is shown alongside the choices, so never use a synonym that
+  // appears in the definition as the correct answer — that would give it away.
+  const def = normalizeAnswer(word.definitionSv);
+  const safe = word.synonyms.filter(s => !def.includes(normalizeAnswer(s)));
+  const candidates = safe.length ? safe : word.synonyms;
+  const correct = candidates[Math.floor(Math.random() * candidates.length)];
+  const pool = [];
+  for (const w of words){
+    if (w.id === word.id) continue;
+    for (const syn of (w.synonyms || [])) pool.push(syn);
+  }
+  // unique + shuffle
+  const uniq = Array.from(new Set(pool.filter(s => normalizeAnswer(s) !== normalizeAnswer(correct))));
+  shuffle(uniq);
+  const distractors = uniq.slice(0, 3);
+  const choices = shuffle([correct, ...distractors]);
+  return { correct, choices };
+}
+
+/* ---- Speech (offline text-to-speech via the browser) ---- */
+let svVoice = null;
+function loadVoice(){
+  if (!("speechSynthesis" in window)) return;
+  const voices = speechSynthesis.getVoices();
+  // Prefer a full sv-SE voice, else any Swedish voice.
+  svVoice = voices.find(v => /^sv[-_]?se/i.test(v.lang)) ||
+            voices.find(v => /^sv/i.test(v.lang)) || null;
+}
+function speechSupported(){ return "speechSynthesis" in window; }
+function speakWord(text){
+  if (!speechSupported() || !text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "sv-SE";
+  if (svVoice) u.voice = svVoice;
+  u.rate = 0.9;
+  speechSynthesis.speak(u);
+}
+// A reusable speaker button; returns "" when TTS is unavailable.
+function speakBtn(text){
+  if (!speechSupported()) return "";
+  return `<button class="speak" data-speak="${esc(text)}" title="Hör uttalet" aria-label="Hör uttalet">🔊</button>`;
+}
+
+function shuffle(arr){
+  for (let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/* =========================================================================
+   RENDERING
+   ========================================================================= */
+const $ = sel => document.querySelector(sel);
+const cardHost = $("#cardHost");
+
+function updateStats(){
+  const ids = words.map(w => w.id);
+  let seen = 0, mastered = 0, due = 0;
+  for (const id of ids){
+    const s = state.srs[id];
+    if (s.seen > 0) seen++;
+    if (s.level >= 5) mastered++;
+    if (s.dueAt <= state.tick) due++;
+  }
+  $("#stSeen").textContent = seen;
+  $("#stMastered").textContent = mastered;
+  $("#stDue").textContent = due;
+  $("#stStreak").textContent = maxStreakCurrent();
+}
+let sessionStreak = 0;
+function maxStreakCurrent(){ return sessionStreak; }
+
+function esc(str){
+  return String(str).replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+
+function englishBlock(word){
+  return `
+    <div class="reveal">
+      <button class="btn cheat" id="cheatBtn">Visa engelska (fusk)</button>
+      <div class="english hidden" id="englishText">🇬🇧 ${esc(word.english || "—")}</div>
+    </div>`;
+}
+
+function renderCard(){
+  updateStats();
+  const word = pickNextWord();
+  if (!word){
+    cardHost.innerHTML = `<div class="card"><p>Inga ord tillgängliga. Importera ord under Inställningar.</p></div>`;
+    return;
+  }
+  const mode = chooseMode(word);
+  current = { word, mode, cheated: false };
+
+  if (mode === "fill") renderFill(word);
+  else renderSyn(word);
+}
+
+function renderFill(word){
+  const sentence = word.examples[Math.floor(Math.random() * word.examples.length)];
+  // Replace the word (and simple inflections) with a blank. Match the base word;
+  // if not found literally, blank the closest token by shared stem.
+  const blanked = blankOut(sentence, word.word);
+  cardHost.innerHTML = `
+    <div class="card">
+      <span class="tag">Lucktext · ${esc(word.pos || "")}</span>
+      <p class="prompt">${blanked}</p>
+      <p class="defsv"><b>Ledtråd:</b> ${esc(word.definitionSv)}</p>
+      <input type="text" id="answer" placeholder="Skriv ordet…" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <div class="row">
+        <button class="btn" id="submitBtn">Svara</button>
+        <button class="btn secondary" id="hintBtn">Visa synonymer</button>
+      </div>
+      <div id="synHint" class="defsv" style="display:none"></div>
+      <div id="fb"></div>
+      ${englishBlock(word)}
+    </div>`;
+  const input = $("#answer");
+  input.focus();
+  input.addEventListener("keydown", e => { if (e.key === "Enter") $("#submitBtn").click(); });
+  $("#submitBtn").addEventListener("click", () => checkFill(word));
+  $("#hintBtn").addEventListener("click", () => {
+    $("#synHint").style.display = "block";
+    $("#synHint").innerHTML = "<b>Synonymer:</b> " + word.synonyms.map(s => `<span class="syn">${esc(s)}</span>`).join("");
+  });
+  wireCheat();
+}
+
+function blankOut(sentence, word){
+  const base = word.split(" ")[0]; // handle "foga sig" -> match "foga*"
+  const stem = base.slice(0, Math.max(3, base.length - 2));
+  const re = new RegExp("\\b" + escapeRe(stem) + "\\w*", "i");
+  if (re.test(sentence)){
+    return esc(sentence).replace(new RegExp("\\b" + escapeRe(stem) + "\\w*", "i"),
+      '<span class="blank">_____</span>');
+  }
+  // Fallback: append a blank prompt.
+  return esc(sentence) + ' <span class="blank">(_____)</span>';
+}
+function escapeRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+function checkFill(word){
+  const val = normalizeAnswer($("#answer").value);
+  if (!val) return;
+  const target = normalizeAnswer(word.word);
+  const targetBase = normalizeAnswer(word.word.split(" ")[0]);
+  const ok = val === target || val === targetBase ||
+             (targetBase.length >= 4 && val.startsWith(targetBase.slice(0, targetBase.length - 1)) && val.length >= targetBase.length - 1 && sharesStem(val, targetBase));
+  showFillResult(word, ok);
+}
+function sharesStem(a, b){
+  const n = Math.min(a.length, b.length);
+  let same = 0;
+  for (let i = 0; i < n; i++){ if (a[i] === b[i]) same++; else break; }
+  return same >= Math.max(4, b.length - 2);
+}
+
+function showFillResult(word, ok){
+  const cheated = current.cheated;
+  schedule(word.id, ok ? "correct" : "wrong", cheated);
+  sessionStreak = ok && !cheated ? sessionStreak + 1 : 0;
+  state.tick += 1;
+  saveState();
+  $("#submitBtn").disabled = true;
+  $("#answer").disabled = true;
+  const fb = $("#fb");
+  fb.className = "feedback " + (ok ? "ok" : "bad");
+  fb.innerHTML = (ok ? `✓ Rätt! <b>${esc(word.word)}</b>${speakBtn(word.word)}` : `✗ Fel. Rätt ord: <b>${esc(word.word)}</b>${speakBtn(word.word)}`) +
+    `<div class="reveal"><span class="label">Definition</span><br>${esc(word.definitionSv)}<br>` +
+    "<span class='label'>Synonymer</span><br>" + word.synonyms.map(s => `<span class="syn">${esc(s)}</span>`).join("") +
+    `<div class="example-extra">« ${esc(word.examples[0])} »</div></div>`;
+  addNext();
+}
+
+function renderSyn(word){
+  const { correct, choices } = buildSynonymChoices(word);
+  current.synCorrect = correct;
+  cardHost.innerHTML = `
+    <div class="card">
+      <span class="tag">Synonymmatchning · ${esc(word.pos || "")}</span>
+      <p class="prompt"><span class="prompt-word">${esc(word.word)}</span>${speakBtn(word.word)}</p>
+      <p class="defsv">${esc(word.definitionSv)}</p>
+      <p class="hint">Vilket ord är en synonym?</p>
+      <div class="choices" id="choices">
+        ${choices.map(c => `<button class="choice" data-val="${esc(c)}">${esc(c)}</button>`).join("")}
+      </div>
+      <div id="fb"></div>
+      ${englishBlock(word)}
+    </div>`;
+  document.querySelectorAll("#choices .choice").forEach(btn => {
+    btn.addEventListener("click", () => checkSyn(word, btn));
+  });
+  wireCheat();
+}
+
+function checkSyn(word, btn){
+  const chosen = normalizeAnswer(btn.dataset.val);
+  const isCorrect = word.synonyms.some(s => normalizeAnswer(s) === chosen);
+  const cheated = current.cheated;
+  document.querySelectorAll("#choices .choice").forEach(b => {
+    b.disabled = true;
+    const v = normalizeAnswer(b.dataset.val);
+    if (word.synonyms.some(s => normalizeAnswer(s) === v)) b.classList.add("correct");
+    else if (b === btn) b.classList.add("wrong");
+  });
+  schedule(word.id, isCorrect ? "correct" : "wrong", cheated);
+  sessionStreak = isCorrect && !cheated ? sessionStreak + 1 : 0;
+  state.tick += 1;
+  saveState();
+  const fb = $("#fb");
+  fb.className = "feedback " + (isCorrect ? "ok" : "bad");
+  fb.innerHTML = (isCorrect ? "✓ Rätt!" : "✗ Fel.") +
+    `<div class="reveal"><span class="label">Alla synonymer</span><br>` +
+    word.synonyms.map(s => `<span class="syn">${esc(s)}</span>`).join("") +
+    `<div class="example-extra">« ${esc(word.examples && word.examples[0] ? word.examples[0] : "")} »</div></div>`;
+  addNext();
+}
+
+function wireCheat(){
+  const btn = $("#cheatBtn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    $("#englishText").classList.remove("hidden");
+    btn.disabled = true;
+    current.cheated = true; // flag: this attempt used the crutch
+  });
+}
+
+function addNext(){
+  const host = cardHost.querySelector(".card");
+  const div = document.createElement("div");
+  div.className = "row";
+  div.style.marginTop = "16px";
+  div.innerHTML = `<button class="btn" id="nextBtn">Nästa ord →</button>`;
+  host.appendChild(div);
+  const next = $("#nextBtn");
+  next.focus();
+  next.addEventListener("click", renderCard);
+  document.addEventListener("keydown", nextOnEnter);
+}
+function nextOnEnter(e){
+  if (e.key === "Enter" && $("#nextBtn")){
+    document.removeEventListener("keydown", nextOnEnter);
+    renderCard();
+  }
+}
+
+/* =========================================================================
+   NAV + SETTINGS
+   ========================================================================= */
+function showPanel(which){
+  $("#studyPanel").classList.toggle("active", which === "study");
+  $("#settingsPanel").classList.toggle("active", which === "settings");
+  if (which === "study") renderCard();
+}
+$("#navStudy").addEventListener("click", () => showPanel("study"));
+$("#navSettings").addEventListener("click", () => showPanel("settings"));
+
+$("#optFill").addEventListener("change", onSettingsChange);
+$("#optSyn").addEventListener("change", onSettingsChange);
+function onSettingsChange(){
+  let fill = $("#optFill").checked, syn = $("#optSyn").checked;
+  if (!fill && !syn){ // never allow both off
+    syn = true; $("#optSyn").checked = true;
+  }
+  state.settings.fill = fill;
+  state.settings.syn = syn;
+  saveState();
+}
+
+function validateWord(w){
+  return w && typeof w.word === "string" && w.word.trim() &&
+    (typeof w.definitionSv === "string") &&
+    Array.isArray(w.synonyms) && Array.isArray(w.examples);
+}
+function importWords(arr){
+  if (!Array.isArray(arr)) throw new Error("JSON måste vara en array av ord.");
+  let added = 0, updated = 0, skipped = 0;
+  for (const raw of arr){
+    if (!validateWord(raw)){ skipped++; continue; }
+    const id = (raw.id && String(raw.id).trim()) || normalizeAnswer(raw.word).replace(/\s+/g, "-");
+    const entry = {
+      id,
+      word: raw.word.trim(),
+      pos: raw.pos || "",
+      definitionSv: raw.definitionSv || "",
+      synonyms: raw.synonyms.map(String),
+      examples: raw.examples.map(String),
+      english: raw.english || "",
+      difficulty: Math.min(5, Math.max(1, Number(raw.difficulty) || 3))
+    };
+    const idx = words.findIndex(w => w.id === id);
+    if (idx >= 0){ words[idx] = entry; updated++; }
+    else { words.push(entry); added++; }
+  }
+  saveWords();
+  ensureSrs();
+  saveState();
+  return { added, updated, skipped };
+}
+
+$("#btnImportText").addEventListener("click", () => {
+  const msg = $("#importMsg");
+  try {
+    const arr = JSON.parse($("#importText").value);
+    const r = importWords(arr);
+    msg.className = "msg ok";
+    msg.textContent = `Klart: ${r.added} nya, ${r.updated} uppdaterade, ${r.skipped} överhoppade.`;
+    refreshWordCount();
+  } catch(e){
+    msg.className = "msg bad";
+    msg.textContent = "Fel: " + e.message;
+  }
+});
+$("#btnImportFile").addEventListener("click", () => $("#importFile").click());
+$("#importFile").addEventListener("change", ev => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const msg = $("#importMsg");
+    try {
+      const r = importWords(JSON.parse(reader.result));
+      msg.className = "msg ok";
+      msg.textContent = `Klart: ${r.added} nya, ${r.updated} uppdaterade, ${r.skipped} överhoppade.`;
+      refreshWordCount();
+    } catch(e){
+      msg.className = "msg bad";
+      msg.textContent = "Fel: " + e.message;
+    }
+  };
+  reader.readAsText(file);
+  ev.target.value = "";
+});
+
+function download(filename, text){
+  const blob = new Blob([text], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+$("#btnExport").addEventListener("click", () => {
+  download("framsteg.json", JSON.stringify(state, null, 2));
+});
+$("#btnExportWords").addEventListener("click", () => {
+  download("ordlista.json", JSON.stringify(words, null, 2));
+});
+$("#btnReset").addEventListener("click", () => {
+  if (confirm("Vill du nollställa alla framsteg? Ordlistan behålls.")){
+    state = defaultState();
+    ensureSrs();
+    saveState();
+    sessionStreak = 0;
+    $("#progMsg").className = "msg ok";
+    $("#progMsg").textContent = "Framsteget är nollställt.";
+    updateStats();
+  }
+});
+
+function refreshWordCount(){ $("#wordCount").textContent = words.length; }
+
+/* =========================================================================
+   INIT
+   ========================================================================= */
+function init(){
+  if (speechSupported()){
+    loadVoice();
+    speechSynthesis.onvoiceschanged = loadVoice; // voices often load async
+  }
+  // One delegated handler for every 🔊 button, regardless of when rendered.
+  cardHost.addEventListener("click", e => {
+    const b = e.target.closest("[data-speak]");
+    if (b) speakWord(b.getAttribute("data-speak"));
+  });
+  // Ask the browser not to evict saved progress under storage pressure.
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  words = loadWords();
+  saveWords(); // persist seed on first run
+  state = loadState();
+  ensureSrs();
+  saveState();
+  $("#optFill").checked = state.settings.fill;
+  $("#optSyn").checked = state.settings.syn;
+  refreshWordCount();
+  renderCard();
+}
+init();
+</script>
+</body>
+</html>

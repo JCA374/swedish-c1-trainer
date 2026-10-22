@@ -140,6 +140,8 @@
   .reveal { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
   .reveal .label { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
   .syn { display: inline-block; background: #eef1f6; border-radius: 6px; padding: 2px 8px; margin: 2px 4px 2px 0; font-size: 14px; }
+  button.syn { border: 1px solid transparent; color: inherit; font-family: inherit; cursor: pointer; }
+  button.syn:hover { border-color: #b9c3d3; }
   .english { margin-top: 10px; font-size: 15px; color: var(--accent-2); }
   .english.hidden { display: none; }
   .speak {
@@ -650,7 +652,14 @@ function renderFill(word){
   $("#submitBtn").addEventListener("click", () => checkFill(word));
   $("#hintBtn").addEventListener("click", () => {
     $("#synHint").style.display = "block";
-    $("#synHint").innerHTML = "<b>Synonymer:</b> " + word.synonyms.map(s => `<span class="syn">${esc(s)}</span>`).join("");
+    $("#synHint").innerHTML = "<b>Synonymer:</b> " + word.synonyms.map((s, i) => `<button type="button" class="syn" data-i="${i}">${esc(s)}</button>`).join("");
+  });
+  // Clicking a synonym types it into the answer field.
+  $("#synHint").addEventListener("click", e => {
+    const b = e.target.closest(".syn");
+    if (!b || input.disabled) return;
+    input.value = word.synonyms[+b.dataset.i];
+    input.focus();
   });
   wireCheat();
 }
@@ -675,6 +684,14 @@ function checkFill(word){
   const targetBase = normalizeAnswer(word.word.split(" ")[0]);
   const ok = val === target || val === targetBase ||
              (targetBase.length >= 4 && val.startsWith(targetBase.slice(0, targetBase.length - 1)) && val.length >= targetBase.length - 1 && sharesStem(val, targetBase));
+  // A synonym has the right meaning but isn't the word sought: no penalty, try again.
+  if (!ok && word.synonyms.some(syn => normalizeAnswer(syn) === val)){
+    const fb = $("#fb");
+    fb.className = "feedback";
+    fb.textContent = "Synonym – rätt betydelse, men vilket ord söks?";
+    $("#answer").select();
+    return;
+  }
   showFillResult(word, ok);
 }
 function sharesStem(a, b){

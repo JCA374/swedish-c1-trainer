@@ -9,4 +9,4 @@ Progress (levels, mistakes, what's due next) is saved in your own browser's loca
 
 - It stays on that browser and device. Another browser or computer starts fresh.
 - Clearing site data or using a private window will lose it.
-- To keep a backup copy, use **Inställningar → Exportera framsteg**.
+- To back up or move it to another device, use **Inställningar → Exportera framsteg**, then **Importera framsteg…** on the other device.

@@ -218,6 +218,8 @@
       <h3>Framsteg</h3>
       <div class="row">
         <button class="btn secondary" id="btnExport">Exportera framsteg</button>
+        <input type="file" id="importProgFile" accept=".json,application/json" style="display:none">
+        <button class="btn secondary" id="btnImportProg">Importera framsteg…</button>
         <button class="btn secondary" id="btnExportWords">Exportera alla ord</button>
         <button class="btn secondary" id="btnReset">Nollställ framsteg</button>
       </div>
@@ -410,16 +412,19 @@ function loadState(){
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw){
-      const s = JSON.parse(raw);
-      if (s && typeof s === "object"){
-        s.settings = Object.assign({ fill:true, syn:true }, s.settings || {});
-        s.srs = s.srs || {};
-        s.tick = s.tick || 0;
-        return s;
-      }
+      const s = normalizeState(JSON.parse(raw));
+      if (s) return s;
     }
   } catch(e){ /* fall through */ }
   return defaultState();
+}
+// Fill in missing fields of a stored/imported state; null if it isn't one.
+function normalizeState(s){
+  if (!s || typeof s !== "object" || Array.isArray(s)) return null;
+  s.settings = Object.assign({ fill:true, syn:true }, s.settings || {});
+  s.srs = s.srs || {};
+  s.tick = s.tick || 0;
+  return s;
 }
 function saveState(){ storeSet(STORAGE_KEY, state); }
 
@@ -867,6 +872,39 @@ function download(filename, text){
 }
 $("#btnExport").addEventListener("click", () => {
   download("framsteg.json", JSON.stringify(state, null, 2));
+});
+$("#btnImportProg").addEventListener("click", () => $("#importProgFile").click());
+$("#importProgFile").addEventListener("change", ev => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const msg = $("#progMsg");
+    try {
+      let parsed;
+      try { parsed = JSON.parse(reader.result); } catch(e){ throw new Error("Filen är inte giltig JSON."); }
+      const s = normalizeState(parsed);
+      if (!s || typeof s.srs !== "object" || Array.isArray(s.srs))
+        throw new Error("Filen ser inte ut som en framstegsfil (framsteg.json).");
+      if (!confirm("Ersätta ditt nuvarande framsteg med filens innehåll?")) return;
+      state = s;
+      ensureSrs();
+      saveState();
+      sessionStreak = 0;
+      $("#optFill").checked = state.settings.fill;
+      $("#optSyn").checked = state.settings.syn;
+      const known = words.filter(w => state.srs[w.id] && state.srs[w.id].seen > 0).length;
+      msg.className = "msg ok";
+      msg.textContent = `Framsteg importerat: ${known} övade ord.`;
+      updateStats();
+      renderCard();
+    } catch(e){
+      msg.className = "msg bad";
+      msg.textContent = "Fel: " + e.message;
+    }
+  };
+  reader.readAsText(file);
+  ev.target.value = "";
 });
 $("#btnExportWords").addEventListener("click", () => {
   download("ordlista.json", JSON.stringify(words, null, 2));

@@ -58,14 +58,70 @@ def slug(word):
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
 
 
-def stem_of(word):
-    """Mirror blankOut() in index.html: first word minus 2 chars, at least 3."""
-    base = word.split(" ")[0]
-    return base[: max(3, len(base) - 2)].lower()
+# Inflections Folkets lexikon lacks, for hand-curated seed words.
+EXTRA_FORMS = {
+    "betaga": ["betar", "betog", "betagit", "betagen", "betaget", "betagna"],
+    "föresätta": ["föresätter", "föresatte", "föresatt"],
+}
+SV_CLASS = {"substantiv": "nn", "verb": "vb", "adjektiv": "jj", "adverb": "ab"}
 
 
-def blankable(example, word):
-    return re.search(r"\b" + re.escape(stem_of(word)) + r"\w*", example, re.I) is not None
+# --- The functions below mirror the matching in index.html (baseOf, isForm,
+# --- blankTarget, leaksWord). Keep the two in sync.
+def tokens(s):
+    return [t.lower() for t in re.findall(r"[^\W\d_]+", s)]
+
+
+def base_of(word):
+    """The main word of a phrase: its longest token ("avhålla sig" -> avhålla)."""
+    best = ""
+    for t in tokens(word):
+        if len(t) >= len(best):
+            best = t
+    return best
+
+
+def stem_of(base):
+    return base[: max(3, len(base) - 2)]
+
+
+def root_of(base):
+    root = re.sub(r"[aeiouyåäö]$", "", base)
+    return root if len(root) >= 3 else base
+
+
+def is_form(t, forms):
+    return t in forms or (t.endswith("s") and t[:-1] in forms)   # passive: betogs
+
+
+def blank_target(example, word, forms):
+    """The token to blank out, or None if the example can't hide the answer."""
+    base = base_of(word)
+    forms = set(forms) | {base}
+    toks = tokens(example)
+    target = next((t for t in toks if is_form(t, forms)), None) or \
+        next((t for t in toks if t.startswith(stem_of(base))), None)
+    if not target:
+        return None
+    rest = list(toks)
+    rest.remove(target)
+    if any(leaks_word(t, base, forms) for t in rest):
+        return None
+    return target
+
+
+def leaks_word(t, base, forms):
+    return is_form(t, forms) or t.startswith(root_of(base))
+
+
+def folkets_forms(word, fclass, by_word):
+    out = set()
+    for f in by_word.get(base_of(word), []):
+        if f.get("class") == fclass:
+            for i in f.iter("inflection"):
+                out.add((i.get("value") or "").replace("|", "").lower())
+    out |= set(EXTRA_FORMS.get(base_of(word), []))
+    return sorted(x for x in out if x)
 
 
 def clean(s):
@@ -84,11 +140,15 @@ def good_synonym(syn, word, fclass, classes):
     return " " in syn or fclass in classes.get(syn, ())
 
 
-def build(kelly, folkets):
+def index_folkets(folkets):
     by_word, classes = {}, {}
     for w in folkets.iter("word"):
         by_word.setdefault(w.get("value"), []).append(w)
         classes.setdefault(w.get("value"), set()).add(w.get("class"))
+    return by_word, classes
+
+
+def build(kelly, by_word, classes):
 
     c1 = []
     seen = set()
@@ -110,6 +170,8 @@ def build(kelly, folkets):
         if not entries:
             continue
 
+        forms = folkets_forms(word, fclass, by_word)
+        base = base_of(word)
         defs = [clean(d.get("value")) for f in entries for d in f.findall("definition")]
         defs = [d for d in defs if d]
         eng = []
@@ -126,7 +188,9 @@ def build(kelly, folkets):
         for f in entries:
             for s in f.findall("synonym"):
                 v = clean(s.get("value"))
-                if float(s.get("level") or 0) >= SYN_MIN_LEVEL and good_synonym(v, word, fclass, classes) and v not in syns:
+                if (float(s.get("level") or 0) >= SYN_MIN_LEVEL and good_synonym(v, word, fclass, classes)
+                        and not any(leaks_word(t, base, set(forms) | {base}) for t in tokens(v))
+                        and v not in syns):
                     syns.append(v)
         syns = syns[:MAX_SYNONYMS]
         # The definition is shown in synonym mode; if it contains every synonym
@@ -138,7 +202,7 @@ def build(kelly, folkets):
         for f in entries:
             for x in f.findall("example"):
                 v = clean(x.get("value"))
-                if v and blankable(v, word) and v not in examples:
+                if v and blank_target(v, word, forms) and v not in examples:
                     examples.append(v[0].upper() + v[1:])
         examples = examples[:MAX_EXAMPLES]
 
@@ -147,7 +211,7 @@ def build(kelly, folkets):
         c1.append({
             "id": slug(word), "word": word, "pos": pos_sv, "definitionSv": definition,
             "synonyms": syns, "examples": examples, "english": " / ".join(eng[:2]),
-            "wpm": wpm, "level": "C1",
+            "wpm": wpm, "level": "C1", "forms": forms,
         })
 
     # Rarer words (lower frequency) are a bit harder.
@@ -157,8 +221,8 @@ def build(kelly, folkets):
     return c1
 
 
-def seed_ids(text):
-    return set(re.findall(r'\{id:"([^"]+)"', text))
+def seed_words(text):
+    return re.findall(r'\{id:"([^"]+)",word:"([^"]+)",pos:"([^"]*)"', text)
 
 
 def main():
@@ -167,12 +231,19 @@ def main():
     ap.add_argument("--cache")
     args = ap.parse_args()
 
-    words = build(fetch(KELLY_URL, args.cache), fetch(FOLKETS_URL, args.cache))
+    by_word, classes = index_folkets(fetch(FOLKETS_URL, args.cache))
+    words = build(fetch(KELLY_URL, args.cache), by_word, classes)
     text = open(HTML, encoding="utf8").read()
     # Hand-curated seed entries win over generated ones with the same id.
-    seeds = seed_ids(text.split(BEGIN)[0] if BEGIN in text else text)
+    seed = seed_words(text.split(BEGIN)[0] if BEGIN in text else text)
+    seeds = {i for i, _, _ in seed}
     dupes = [w["word"] for w in words if w["id"] in seeds]
     words = [w for w in words if w["id"] not in seeds]
+    # Inflections let the app blank and accept "betog" for "betaga".
+    forms = {w["id"]: w.pop("forms") for w in words}
+    for i, word, pos in seed:
+        forms[i] = folkets_forms(word, SV_CLASS.get(pos, ""), by_word)
+    forms = {k: v for k, v in forms.items() if v}
 
     both = sum(1 for w in words if w["synonyms"] and w["examples"])
     fill = sum(1 for w in words if w["examples"] and not w["synonyms"])
@@ -187,7 +258,8 @@ def main():
     if args.dry_run:
         return
     body = ",\n".join(json.dumps(w, ensure_ascii=False) for w in words)
-    block = f"{BEGIN}\nconst KELLY_C1 = [\n{body}\n];\n{END}"
+    block = (f"{BEGIN}\nconst KELLY_C1 = [\n{body}\n];\n"
+             f"const WORD_FORMS = {json.dumps(forms, ensure_ascii=False)};\n{END}")
     if BEGIN not in text:
         sys.exit(f"Markers {BEGIN} … {END} not found in {HTML}")
     pre, rest = text.split(BEGIN, 1)
